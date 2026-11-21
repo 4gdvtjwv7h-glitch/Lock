@@ -1,0 +1,77 @@
+
+-- AIMLOCK DE PRUEBA
+-- Tecla Q para activar/desactivar
+-- Solo para tu propio juego
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+local activo = false
+local objetivo = nil
+
+-- Activar / desactivar con Q
+UserInputService.InputBegan:Connect(function(input, procesado)
+    if procesado then return end
+
+    if input.KeyCode == Enum.KeyCode.Q then
+        activo = not activo
+
+        if not activo then
+            objetivo = nil
+        end
+    end
+end)
+
+-- Buscar jugador más cercano al centro de pantalla
+local function buscarObjetivo()
+    local mejorJugador = nil
+    local menorDistancia = math.huge
+
+    for _, otroJugador in ipairs(Players:GetPlayers()) do
+        if otroJugador ~= player then
+            local personaje = otroJugador.Character
+            local cabeza = personaje and personaje:FindFirstChild("Head")
+            local humanoid = personaje and personaje:FindFirstChildOfClass("Humanoid")
+
+            if cabeza and humanoid and humanoid.Health > 0 then
+                local posicion, visible =
+                    camera:WorldToViewportPoint(cabeza.Position)
+
+                if visible then
+                    local centro = camera.ViewportSize / 2
+                    local distancia =
+                        (Vector2.new(posicion.X, posicion.Y) - centro).Magnitude
+
+                    if distancia < menorDistancia then
+                        menorDistancia = distancia
+                        mejorJugador = otroJugador
+                    end
+                end
+            end
+        end
+    end
+
+    return mejorJugador
+end
+
+-- Apuntar a la cabeza
+RunService.RenderStepped:Connect(function()
+    if not activo then return end
+
+    objetivo = buscarObjetivo()
+
+    if objetivo and objetivo.Character then
+        local cabeza = objetivo.Character:FindFirstChild("Head")
+
+        if cabeza then
+            camera.CFrame = CFrame.lookAt(
+                camera.CFrame.Position,
+                cabeza.Position
+            )
+        end
+    end
+end)
